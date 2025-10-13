@@ -28,12 +28,12 @@ jobs:
             TAG="${GITHUB_REF#refs/tags/}"
           fi
 
-          # Check if this is a pre-release tag
-          if [[ "$TAG" =~ [\.-]?(rc|alpha|beta|pre|dev)[0-9]*$ ]]; then
-            # Extract base version (e.g., v0.10.0 from v0.10.0rc1)
-            BASE_VERSION=$(echo "$TAG" | sed -E 's/[\.-]?(rc|alpha|beta|pre|dev)[0-9]*$//')
+          # Extract base version (e.g., v0.10.0 from v0.10.0rc1)
+          BASE_VERSION=$(echo "$TAG" | sed -E 's/[\.-]?(rc|alpha|beta|pre|dev)[0-9]*$//')
 
-            # Check if corresponding full release exists
+          # Check if this is a pre-release tag by comparing with base version
+          if [[ "$TAG" != "$BASE_VERSION" ]]; then
+            # This is a pre-release tag, check if corresponding full release exists
             if git ls-remote --tags https://${{ secrets.ORG_ADMIN_TOKEN || secrets.GITHUB_TOKEN }}@github.com/${{ github.repository }}.git | grep -q "refs/tags/$BASE_VERSION$"; then
               echo "::notice::Skipping pre-release tag $TAG because full release $BASE_VERSION exists"
               echo "skip_feature_branch_creation=true" >> $GITHUB_OUTPUT
@@ -96,12 +96,12 @@ jobs:
 
           for tag in $ALL_TAGS; do
             if [[ "$FOUND_CURRENT" == "true" ]]; then
-              # Check if this is a pre-release tag
-              if [[ "$tag" =~ [\.-]?(rc|alpha|beta|pre|dev)[0-9]*$ ]]; then
-                # Extract base version (e.g., v0.10.0 from v0.10.0rc1)
-                BASE_VERSION=$(bash scripts/extract_base_version.sh "$tag")
+              # Extract base version (e.g., v0.10.0 from v0.10.0rc1)
+              BASE_VERSION=$(bash scripts/extract_base_version.sh "$tag")
 
-                # Check if corresponding full release exists
+              # Check if this is a pre-release tag by comparing with base version
+              if [[ "$tag" != "$BASE_VERSION" ]]; then
+                # This is a pre-release tag, check if corresponding full release exists
                 if git ls-remote --tags origin | grep -q "refs/tags/$BASE_VERSION$"; then
                   echo "Skipping pre-release tag $tag because full release $BASE_VERSION exists"
                   continue
