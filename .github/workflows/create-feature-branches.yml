@@ -31,7 +31,7 @@ jobs:
           # Check if this is a pre-release tag
           if [[ "$TAG" =~ [\.-]?(rc|alpha|beta|pre|dev)[0-9]*$ ]]; then
             # Extract base version (e.g., v0.10.0 from v0.10.0rc1)
-            BASE_VERSION=$(bash scripts/extract_base_version.sh "$TAG")
+            BASE_VERSION=$(echo "$TAG" | sed -E 's/[\.-]?(rc|alpha|beta|pre|dev)[0-9]*$//')
 
             # Check if corresponding full release exists
             if git ls-remote --tags https://${{ secrets.ORG_ADMIN_TOKEN || secrets.GITHUB_TOKEN }}@github.com/${{ github.repository }}.git | grep -q "refs/tags/$BASE_VERSION$"; then
