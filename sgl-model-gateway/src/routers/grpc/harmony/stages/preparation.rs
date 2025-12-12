@@ -20,6 +20,7 @@ use crate::{
             utils,
         },
     },
+    tool_parser::constraints,
 };
 
 /// Harmony Preparation stage: Encode requests using Harmony protocol
@@ -100,7 +101,18 @@ impl HarmonyPreparationStage {
 
         // Step 2: Build tool constraints
         let tool_constraints = if let Some(tools) = body_ref.tools.as_ref() {
-            Self::generate_tool_call_constraint(tools, &body_ref.tool_choice).map_err(|e| *e)?
+            constraints::build_tool_call_constraint(
+                tools,
+                &body_ref.tool_choice,
+                request.parallel_tool_calls.unwrap_or(true),
+                &ctx.components.tool_parser_factory,
+                None, // configured_parser not available in context yet
+                &request.model,
+            )
+            .map_err(|e| {
+                error!(function = "prepare_chat", error = %e, "Invalid tool configuration");
+                error::bad_request(format!("Invalid tool configuration: {}", e))
+            })?
         } else {
             None
         };
@@ -157,8 +169,18 @@ impl HarmonyPreparationStage {
 
         // Step 3: Generate Harmony structural tags
         let tool_constraint = if !function_tools.is_empty() {
-            Self::generate_tool_call_constraint(&function_tools, &request.tool_choice)
-                .map_err(|e| *e)?
+            constraints::build_tool_call_constraint(
+                &function_tools,
+                &request.tool_choice,
+                request.parallel_tool_calls.unwrap_or(true),
+                &ctx.components.tool_parser_factory,
+                None, // configured_parser not available in context yet
+                &request.model,
+            )
+            .map_err(|e| {
+                error!(function = "prepare_responses", error = %e, "Invalid tool configuration");
+                error::bad_request(format!("Invalid tool configuration: {}", e))
+            })?
         } else {
             None
         };
@@ -245,39 +267,6 @@ impl HarmonyPreparationStage {
                 })?;
                 Ok(Some(("structural_tag".to_string(), tag)))
             }
-        }
-    }
-
-    /// Generate Harmony structural tag for tool constraints
-    ///
-    /// Uses structural tags with `triggered_tags` format to force Harmony format output.
-    /// This ensures the model outputs in Harmony format (with channels) even when constrained.
-    fn generate_tool_call_constraint(
-        tools: &[Tool],
-        tool_choice: &Option<ToolChoice>,
-    ) -> Result<Option<(String, String)>, Box<Response>> {
-        let Some(choice) = tool_choice.as_ref() else {
-            return Ok(None);
-        };
-
-        match choice {
-            ToolChoice::Function { function, .. } => {
-                let tag = Self::build_tool_call_structural_tag(tools, Some(&function.name))?;
-                Ok(Some(("structural_tag".to_string(), tag)))
-            }
-            ToolChoice::Value(ToolChoiceValue::Required) => {
-                let tag = Self::build_tool_call_structural_tag(tools, None)?;
-                Ok(Some(("structural_tag".to_string(), tag)))
-            }
-            ToolChoice::AllowedTools { mode, .. } => {
-                if mode == "required" {
-                    let tag = Self::build_tool_call_structural_tag(tools, None)?;
-                    Ok(Some(("structural_tag".to_string(), tag)))
-                } else {
-                    Ok(None)
-                }
-            }
-            _ => Ok(None),
         }
     }
 

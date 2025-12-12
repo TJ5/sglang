@@ -8,7 +8,7 @@ use crate::{
         parsers::helpers,
         partial_json::PartialJson,
         traits::ToolParser,
-        types::{FunctionCall, StreamingParseResult, ToolCall},
+        types::{FormatInfo, FunctionCall, StreamingParseResult, ToolCall},
     },
 };
 
@@ -241,5 +241,15 @@ impl ToolParser for LlamaParser {
             &mut self.current_tool_name_sent,
             &mut self.streamed_args_for_tool,
         );
+    }
+
+    fn get_format_info(&self) -> Option<FormatInfo> {
+        Some(FormatInfo {
+            begin_pattern: Box::new(|name| {
+                format!(r#"<|python_tag|>{{"name":"{}", "parameters":"#, name)
+            }),
+            end_pattern: "}".to_string(),
+            trigger: "<|python_tag|>".to_string(),
+        })
     }
 }
