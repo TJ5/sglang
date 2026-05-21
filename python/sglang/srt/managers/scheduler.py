@@ -3821,6 +3821,7 @@ def run_scheduler_process(
         traceback = get_exception_traceback()
         logger.error(f"Scheduler hit an exception: {traceback}")
         parent_process.send_signal(signal.SIGQUIT)
+        raise
     finally:
         if scheduler is not None:
             # FPM has a background ZMQ publisher thread that needs explicit

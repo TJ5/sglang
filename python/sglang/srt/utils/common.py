@@ -46,7 +46,7 @@ import types
 import uuid
 import warnings
 from collections import OrderedDict, defaultdict
-from contextlib import contextmanager
+from contextlib import contextmanager, suppress
 from dataclasses import dataclass
 from decimal import Decimal
 from functools import lru_cache, partial
@@ -1155,9 +1155,10 @@ def kill_process_tree(
     """Kill the process and all its child processes.
 
     `wait_timeout` (seconds) blocks until every killed process is reaped and
-    raises `RuntimeError` on timeout; `None` is fire-and-forget. The
-    `parent_pid == os.getpid()` branch calls `sys.exit(0)` and cannot wait
-    for itself -- use `include_parent=False` if child reap must finish first.
+    raises `RuntimeError` on timeout; `None` is fire-and-forget. For backward
+    compatibility, the `parent_pid == os.getpid()` branch exits with code 0
+    and cannot wait for itself. Fatal paths should use
+    `kill_current_process_tree_and_exit(exit_code=1)` instead.
     """
     if parent_pid is None:
         parent_pid = os.getpid()
@@ -1196,6 +1197,31 @@ def kill_process_tree(
 
     if wait_timeout is not None and killed:
         _wait_for_reap_or_raise(killed, wait_timeout)
+
+
+def kill_current_process_tree_and_exit(
+    exit_code: int = 1,
+    wait_timeout: Optional[float] = None,
+) -> None:
+    """Clean up child processes, then terminate this process with exit_code.
+
+    This helper is for fatal paths that must not report a successful process
+    exit after cleaning up children. It avoids the self-kill branch in
+    `kill_process_tree`, which is intentionally kept as exit code 0 for
+    compatibility with existing shutdown call sites.
+    """
+    try:
+        kill_process_tree(
+            os.getpid(),
+            include_parent=False,
+            wait_timeout=wait_timeout,
+        )
+    finally:
+        logging.shutdown()
+        for stream in (sys.stdout, sys.stderr):
+            with suppress(Exception):
+                stream.flush()
+        os._exit(exit_code)
 
 
 def monkey_patch_p2p_access_check():

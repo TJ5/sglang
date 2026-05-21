@@ -99,6 +99,7 @@ from sglang.srt.utils import (
     get_bool_env_var,
     is_cuda,
     kill_process_tree,
+    kill_current_process_tree_and_exit,
     launch_dummy_health_check_server,
     maybe_reindex_device_id,
     numa_utils,
@@ -1280,7 +1281,7 @@ def _set_envs_and_config(server_args: ServerArgs):
                 logger.error(
                     "Received sigquit from a child process. It usually means the child failed."
                 )
-                kill_process_tree(os.getpid())
+                kill_current_process_tree_and_exit(exit_code=1)
 
             signal.signal(signal.SIGQUIT, launch_phase_sigquit_handler)
         else:

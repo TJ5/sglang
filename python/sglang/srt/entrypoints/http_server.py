@@ -164,6 +164,7 @@ from sglang.srt.utils import (
     delete_directory,
     get_bool_env_var,
     kill_process_tree,
+    kill_current_process_tree_and_exit,
     set_uvicorn_logging_configs,
 )
 from sglang.srt.utils.auth import AuthLevel, app_has_admin_force_endpoints, auth_level
@@ -1880,7 +1881,7 @@ def _execute_server_warmup(server_args: ServerArgs):
 
     if not success:
         logger.error(f"Initialization failed. warmup error: {last_traceback}")
-        kill_process_tree(os.getpid())
+        kill_current_process_tree_and_exit(exit_code=1)
         return success
 
     model_info = res.json()
@@ -2008,7 +2009,7 @@ def _execute_server_warmup(server_args: ServerArgs):
     except Exception:
         last_traceback = get_exception_traceback()
         logger.error(f"Initialization failed. warmup error: {last_traceback}")
-        kill_process_tree(os.getpid())
+        kill_current_process_tree_and_exit(exit_code=1)
         return False
 
     # Debug print

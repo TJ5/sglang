@@ -661,7 +661,12 @@ def run_data_parallel_controller_process(
             logger.error(
                 f"Scheduler or DataParallelController {proc.pid} terminated with {proc.exitcode}"
             )
+            if proc.exitcode not in (0, None):
+                raise RuntimeError(
+                    f"Scheduler process {proc.pid} terminated with exit code {proc.exitcode}"
+                )
     except Exception:
         traceback = get_exception_traceback()
         logger.error(f"DataParallelController hit an exception: {traceback}")
         parent_process.send_signal(signal.SIGQUIT)
+        raise

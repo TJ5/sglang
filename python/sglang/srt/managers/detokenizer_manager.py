@@ -446,3 +446,4 @@ def run_detokenizer_process(
         if manager is not None:
             manager.maybe_clear_socket_mapping()
         parent_process.send_signal(signal.SIGQUIT)
+        raise

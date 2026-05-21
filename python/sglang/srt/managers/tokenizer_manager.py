@@ -106,6 +106,7 @@ from sglang.srt.utils import (
     get_bool_env_var,
     get_or_create_event_loop,
     kill_process_tree,
+    kill_current_process_tree_and_exit,
 )
 from sglang.srt.utils.aio_rwlock import RWLock
 from sglang.srt.utils.hf_transformers_utils import (
@@ -2798,8 +2799,7 @@ async def print_exception_wrapper(func):
         logger.error(f"TokenizerManager hit an exception: {traceback}")
         if hasattr(func, "__self__") and isinstance(func.__self__, TokenizerManager):
             func.__self__.dump_requests_before_crash()
-        kill_process_tree(os.getpid(), include_parent=True)
-        sys.exit(1)
+        kill_current_process_tree_and_exit(exit_code=1)
 
 
 def _get_processor_wrapper(server_args):
@@ -2860,7 +2860,7 @@ class SignalHandler:
         if self.tokenizer_manager._subprocess_watchdog is not None:
             self.tokenizer_manager._subprocess_watchdog.stop()
         self.tokenizer_manager.dump_requests_before_crash()
-        kill_process_tree(os.getpid())
+        kill_current_process_tree_and_exit(exit_code=1)
 
 
 # Note: request abort handling logic

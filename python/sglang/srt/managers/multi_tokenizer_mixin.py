@@ -25,7 +25,6 @@ import multiprocessing as multiprocessing
 import os
 import pickle
 import signal
-import sys
 import threading
 import zlib
 from multiprocessing import shared_memory
@@ -56,6 +55,7 @@ from sglang.srt.utils import (
     configure_logger,
     kill_itself_when_parent_died,
     kill_process_tree,
+    kill_current_process_tree_and_exit,
 )
 from sglang.srt.utils.network import get_zmq_socket
 from sglang.utils import get_exception_traceback
@@ -530,6 +530,7 @@ def run_multi_detokenizer_router_process(
         if router is not None:
             router.socket_mapping.clear_all_sockets()
         parent_process.send_signal(signal.SIGQUIT)
+        raise
 
 
 class TokenizerWorker(TokenizerManager):
@@ -639,8 +640,7 @@ async def print_exception_wrapper(func):
             func.__self__, MultiTokenizerRouter
         ):
             func.__self__.dump_requests_before_crash()
-        kill_process_tree(os.getpid(), include_parent=True)
-        sys.exit(1)
+        kill_current_process_tree_and_exit(exit_code=1)
 
 
 def get_main_process_id() -> int:
